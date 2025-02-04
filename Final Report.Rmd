@@ -1,0 +1,267 @@
+---
+title: "Google Final Case Study Project Case Study: Fitness Tracking App - Calorie Related Analysis"
+author: "Ahmed M. Abdo"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=TRUE}
+knitr::opts_chunk$set(include = FALSE)
+#Libraries Loading
+if(!require(tidyverse)){install.packages("tidyverse")}
+if(!require(gridExtra)){install.packages("gridExtra")}
+library(tidyverse)
+library(readr)
+library(dplyr)
+library(ggplot2)
+library(gridExtra)
+
+```
+
+
+# 1. Problem Definition
+
+This case study investigates the relationship between calorie burn and various parameters collected by a fitness tracking app.  The primary goal is to understand which factors are most influential in calorie expenditure and demonstrate the importance of calorie tracking for overall health management.  We will explore how different activities, duration, intensity, steps, sleep, and weight contribute to calorie burn.  Ultimately, this analysis aims to provide actionable insights for users to optimize their fitness routines and achieve their health goals.
+
+
+# 2. Data Collection
+
+The data for this analysis comes from a publicly available Fitbit dataset.  It includes various metrics related to daily activity, hourly activity, sleep, and weight. The following datasets were used:
+
+* dailyActivity_merged.csv: Daily summary of activity.
+    
+* dailyCalories_merged.csv: Daily calorie estimates.
+    
+* dailyIntensities_merged.csv: Daily intensity levels.
+    
+* dailySteps_merged.csv: Daily step counts.
+    
+* hourlyCalories_merged.csv: Hourly calorie estimates.
+    
+* hourlyIntensities_merged.csv: Hourly intensity levels.
+    
+* hourlySteps_merged.csv: Hourly step counts.
+    
+* sleepDay_merged.csv: Daily sleep records.
+    
+* heartrate_seconds_merged.csv: Second-by-second heart rate data (not used in this analysis        due to complexity).
+    
+* weightLogInfo_merged.csv: Weight logs.
+    
+* minuteCaloriesNarrow_merged.csv, minuteIntensitiesNarrow_merged.csv,
+    minuteMETsNarrow_merged.csv, minuteStepsNarrow_merged.csv, minuteSleep_merged.csv:  
+    Minute-level data (not used in this initial analysis due to aggregation requirements).
+    
+
+# 3. Data Cleaning and Preprocessing
+
+
+### The Following Code Loads Data That we gonna work with Starting With the entire dataset.
+
+```{r Loadinng Data, include=TRUE}
+#Data loading in Variables
+activity <- read.csv("dailyActivity_merged.csv")
+calories <- read.csv("dailyCalories_merged.csv")
+intensities <- read.csv("dailyIntensities_merged.csv")
+steps <- read.csv("dailySteps_merged.csv")
+hcalories <- read.csv("hourlyCalories_merged.csv")
+hintensities <- read.csv("hourlyIntensities_merged.csv")
+hsteps <- read.csv("hourlySteps_merged.csv")
+dsleep <- read.csv("sleepDay_merged.csv")
+heartrate <- read.csv("heartrate_seconds_merged.csv")
+msleep <- read.csv("minuteSleep_merged.csv")
+weight <- read.csv("weightLogInfo_merged.csv")
+mcalories <- read_csv("minuteCaloriesNarrow_merged.csv")
+mintensities <- read_csv("minuteIntensitiesNarrow_merged.csv")
+mmets <- read_csv("minuteMETsNarrow_merged.csv")
+msteps <- read_csv("minuteStepsNarrow_merged.csv")
+```
+
+###Checking Columns for Data Integrity and Check Our needs of the Data and understanding what each dataframe have to offer.
+
+    
+```{r integrity checking, include=TRUE}
+#Checking Data Validation 
+colnames(activity)
+colnames(calories)
+colnames(intensities)
+colnames(steps)
+colnames(heartrate)
+colnames(hcalories)
+colnames(hintensities)
+colnames(hsteps)
+colnames(mcalories)
+colnames(mintensities)
+colnames(mmets)
+colnames(msleep)
+colnames(msteps)
+colnames(weight)
+colnames(dsleep)
+
+length(unique(activity$Id))
+length(unique(heartrate$Id))
+length(unique(hcalories$Id))
+length(unique(hintensities$Id))
+length(unique(hsteps$Id))
+length(unique(mcalories$Id))
+length(unique(mintensities$Id))
+length(unique(mmets$Id))
+length(unique(msleep$Id))
+length(unique(msteps$Id))
+length(unique(weight$Id))
+length(unique(calories$Id))
+length(unique(intensities$Id))
+length(unique(steps$Id))
+length(unique(dsleep$Id))
+```
+### Finally Undstanding our Analysis Requirement and Begin to Work With
+    
+```{r head, include=TRUE}
+# Choosing Which Tables to work With
+
+head(activity)
+head(calories)
+head(dsleep)
+head(steps)
+head(weight)
+```
+    
+### Before starting we take a deep look at our summary statistics especially MAX MIN, to fully       undstand and be able to avoid any errors while working with data.
+    
+```{r summary stat, include=TRUE}
+# Understanding Our tables for Better Decision and Understanding Statistical Rates
+
+summary(activity)
+summary(calories)
+summary(dsleep)
+summary(steps)
+summary(weight)
+```
+  
+# 4. Exploratory Data Analysis (EDA) 
+
+### First we notice that date in most tables are considered strings for further data integrity, we need to convert it first for appropiate use.
+   
+```{r data modify, include=TRUE}
+# Preparing to merge and work with final Data
+
+activity <- activity %>% 
+  rename(date = ActivityDate) %>% 
+  mutate(date = as.Date(date, format = "%m/%d/%y"))
+calories <- calories %>% 
+  rename(date = ActivityDay) %>% 
+  mutate(date = as.Date(date, format = "%m/%d/%y"))
+dsleep <- dsleep %>% 
+  rename(date = SleepDay) %>% 
+  mutate(date = as.Date(date, format = "%m/%d/%y"))
+steps <- steps %>% 
+  rename( date= ActivityDay) %>% 
+  mutate(date = as.Date(date, format = "%m/%d/%y"))
+weight <- weight %>% 
+  rename(date = Date) %>% 
+  mutate(date = as.Date(date, format = "%m/%d/%y"))
+hcalories <- hcalories %>% 
+  rename(date = ActivityHour) %>% 
+  mutate(date = as.Date(date, format = "%m/%d/%y"))
+```
+    
+   
+### Finally After Checking all data and preprocessing some data key elements, we begin to create our final table to start working with.
+
+```{r merging for final result, include=TRUE}
+#Memory allocation would be failure to join without Adjusting date
+
+finaltable <- activity %>%
+  left_join(hcalories, by = c("Id","date")) %>%
+  left_join(calories, by = c("Id","date")) %>%
+  left_join(steps, by = c("Id","date")) %>%
+  left_join(weight, by = c("Id","date")) %>%
+  left_join(dsleep, by = c("Id","date"), relationship = "many-to-many")
+  
+```
+    
+### For better view of data its better to remove unecessary columns
+    
+```{r removing cols, include=FALSE}
+#Removing unnecessary columns
+
+finaltable <- finaltable %>% 
+  select(-c(StepTotal,BMI,WeightPounds,Fat,IsManualReport,LogId
+            ,TrackerDistance,LoggedActivitiesDistance,Calories.x,Calories.y
+          ))
+
+```
+    
+### Viewing finaltable and importing it for further usage.
+
+```{r checking and saving, include=TRUE}
+#Final Clean Form to Work With
+
+
+
+#Exporting Data Set for Clean work with Visualization
+write_csv(finaltable, "FinalWorkingTable.csv")  # row.names = FALSE
+```
+    
+# 5. Visualizations
+
+### First we plot the relation between distance and burning calories to show when exactly burning calories efficiency taking place, and understanding how important is to monitor distance.
+    
+```{r, include=TRUE}
+#Visualization Relationship
+
+#Undstanding Distance to Burning Calories
+
+T1 <-  ggplot(finaltable, aes(x=VeryActiveDistance, y=Calories)) + geom_point(aes(color=TotalSteps)) + geom_smooth() + labs(x="Active Distance Covered", y="Calories Burned")
+T2 <-  ggplot(finaltable, aes(x=ModeratelyActiveDistance, y=Calories)) + geom_point(aes(color=TotalSteps)) + geom_smooth() + labs(x="Moderate Activity Distance Covered", y="Calories Burned")
+T3 <-  ggplot(finaltable, aes(x=LightActiveDistance, y=Calories)) + geom_point(aes(color=TotalSteps)) + geom_smooth() + labs(x="Light Activity Distance Covered", y="Calories Burned")
+T4 <-  ggplot(finaltable, aes(x=SedentaryActiveDistance, y=Calories)) + geom_point(aes(color=TotalSteps)) + geom_smooth() + labs(x="Sedentary Activity Distance Covered", y="Calories Burned")
+
+grid.arrange(T1,T2,T3,T4)
+```
+    
+### Then we plot the relation between Time and burning calories to show how both distance and time effect equally burning calories and how important both parameters, and understanding how important is to monitor also time along side distance.
+    
+```{r , include=TRUE}
+#Understanding Time used for Burning Calories
+
+
+M1 <- ggplot(finaltable, aes(x=VeryActiveMinutes, y=Calories)) + geom_point(aes(color=VeryActiveMinutes)) + geom_smooth() + labs(x="Active Minutes Consumed", y="Calories Burned",color="Minutes")
+M2 <- ggplot(finaltable, aes(x=FairlyActiveMinutes, y=Calories)) + geom_point(aes(color=FairlyActiveMinutes)) + geom_smooth() + labs(x="Fairly Active Minutes Consumed", y="Calories Burned",color="Minutes")
+M3 <- ggplot(finaltable, aes(x=LightlyActiveMinutes, y=Calories)) + geom_point(aes(color=LightlyActiveMinutes)) + geom_smooth() + labs(x="Lightly Active Minutes Consumed", y="Calories Burned",color="Minutes")
+M4 <- ggplot(finaltable, aes(x=SedentaryMinutes, y=Calories)) + geom_point(aes(color=SedentaryMinutes)) + geom_smooth() + labs(x="Sedentary Minutes Consumed", y="Calories Burned",color="Minutes")
+
+grid.arrange(M1,M2,M3,M4)
+```
+    
+### After successfully showing how important is to burn calories and efficiency of monitoring both distance and time, we begin further more investigating Other parameters to show case the usefulness and the need of monitoring all parameters at once.
+
+```{r , include=TRUE, include=TRUE}
+# Understanding Affected Parameters to Burning Calories
+
+Tsteps <- ggplot(finaltable, aes(x=TotalSteps, y=Calories)) + geom_point(aes(color=TotalSteps)) + geom_smooth() + labs(x="Steps", y="Calories Burned",color="Steps")
+TDistance <- ggplot(finaltable, aes(x=TotalDistance, y=Calories)) + geom_point(aes(color=TotalDistance)) + geom_smooth() + labs(x="Total Distance", y="Calories Burned",color="Distance")
+TMS <- ggplot(finaltable, aes(x=TotalMinutesAsleep, y=Calories)) + geom_point(aes(color=TotalMinutesAsleep)) + geom_smooth() + labs(x="Total Sleep in Minutes", y="Calories Burned",color="Total Sleeping in Minutes")
+TTB <- ggplot(finaltable, aes(x=TotalTimeInBed, y=Calories)) + geom_point(aes(color=TotalTimeInBed)) + geom_smooth() + labs(x="Total Time in Bed", y="Calories Burned",color="Total Time In Bed")
+WC <- ggplot(finaltable, aes(x=WeightKg, y=Calories)) + geom_point(aes(color=WeightKg)) + geom_smooth() + labs(x="Weight", y="Calories Burned",color="Weight")
+TTZ <- ggplot(finaltable, aes(x=TotalTimeInBed, y=TotalMinutesAsleep)) + geom_step(direction="hv") + geom_smooth() + labs(x="Total Time in Bed", y="Total Time A Sleep",color="Difference Between Sleep and Spended time in Bed")
+grid.arrange(Tsteps,TDistance,TMS,WC,TTB,TTZ)
+```
+   
+   
+# 6. Act Phase.
+
+### Upon further investigation needed for more detailed and deceision making,
+### Though from previous analysis we understanding how important to monitor multiple parameters.
+
+### For efficient calorie burning and to relate the following studies to provide how important, for health is calorie management and monitoring for maxmize health benefits.
+
+
+#### A book to further investigate health concerns and how calorie management can eliminate Risk of Chronic and diseases.
+
+[Eat for Life: The Food and Nutrition Board's Guide to Reducing Your Risk of Chronic Disease. by American NIH](https://www.ncbi.nlm.nih.gov/books/NBK235013/)
+
+#### An NIH Research Article matters how important for organize and benefits of calorie management.
+
+[Calorie restriction, immune function, and health span](https://www.nih.gov/news-events/nih-research-matters/calorie-restriction-immune-function-health-span)
+    
