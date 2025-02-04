@@ -236,7 +236,7 @@ grid.arrange(M1,M2,M3,M4)
     
 ### After successfully showing how important is to burn calories and efficiency of monitoring both distance and time, we begin further more investigating Other parameters to show case the usefulness and the need of monitoring all parameters at once.
 
-```{r , include=TRUE, include=TRUE}
+```{r , include=TRUE}
 # Understanding Affected Parameters to Burning Calories
 
 Tsteps <- ggplot(finaltable, aes(x=TotalSteps, y=Calories)) + geom_point(aes(color=TotalSteps)) + geom_smooth() + labs(x="Steps", y="Calories Burned",color="Steps")
