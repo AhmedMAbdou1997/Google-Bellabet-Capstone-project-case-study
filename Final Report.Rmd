@@ -1,8 +1,11 @@
 ---
-title: "Google Final Case Study Project Case Study: Fitness Tracking App - Calorie Related Analysis"
+title: "Google Final Case Study Project Case Study: Fitness Tracking App - Calorie
+  Related Analysis"
 author: "Ahmed M. Abdo"
 date: "`r Sys.Date()`"
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
 ---
 
 ```{r setup, include=TRUE}
